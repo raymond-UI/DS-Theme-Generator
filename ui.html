@@ -1,17 +1,75 @@
-<h2>Rectangle Creator</h2>
-<p>Count: <input id="count" value="5"></p>
-<button id="create">Create</button>
-<button id="cancel">Cancel</button>
-<script>
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        label { display: block; margin-bottom: 10px; }
+        button { margin-top: 20px; }
+        #status { margin-top: 20px; }
+        .error { color: red; }
+        #downloadLinks { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h2>Theme Generator</h2>
+    <form id="themeForm">
+        <label>
+            <input type="checkbox" name="designSystem" value="mui"> MUI
+        </label>
+        <label>
+            <input type="checkbox" name="designSystem" value="shadcnui"> shadcn/ui
+        </label>
+        <label>
+            <input type="checkbox" name="designSystem" value="chakra"> Chakra UI
+        </label>
+        <label>
+            <input type="checkbox" name="designSystem" value="radix"> Radix UI
+        </label>
+        <button id="generateBtn" type="submit">Generate Themes</button>
+    </form>
+    <div id="status"></div>
+    <div id="downloadLinks"></div>
+    <script>
+        document.getElementById('themeForm').onsubmit = (event) => {
+            event.preventDefault();
+            const selectedSystems = Array.from(
+                document.querySelectorAll('input[name="designSystem"]:checked')
+            ).map(input => input.value);
+            
+            if (selectedSystems.length === 0) {
+                document.getElementById('status').innerHTML = '<p class="error">Please select at least one design system.</p>';
+                return;
+            }
 
-document.getElementById('create').onclick = () => {
-  const textbox = document.getElementById('count');
-  const count = parseInt(textbox.value, 10);
-  parent.postMessage({ pluginMessage: { type: 'create-rectangles', count } }, '*')
-}
+            document.getElementById('status').textContent = 'Generating themes...';
+            document.getElementById('generateBtn').disabled = true;
+            
+            parent.postMessage({ pluginMessage: { type: 'generate-themes', systems: selectedSystems } }, '*');
+        };
 
-document.getElementById('cancel').onclick = () => {
-  parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*')
-}
-
-</script>
+        onmessage = (event) => {
+            const message = event.data.pluginMessage;
+            if (message.type === 'generation-complete') {
+                document.getElementById('status').textContent = 'Themes generated successfully!';
+                document.getElementById('generateBtn').disabled = false;
+                
+                const downloadLinks = document.getElementById('downloadLinks');
+                downloadLinks.innerHTML = '';
+                for (const [filename, content] of Object.entries(message.files)) {
+                    const blob = new Blob([content], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename;
+                    link.textContent = `Download ${filename}`;
+                    downloadLinks.appendChild(link);
+                    downloadLinks.appendChild(document.createElement('br'));
+                }
+            } else if (message.type === 'error') {
+                document.getElementById('status').innerHTML = `<p class="error">Error: ${message.message}</p>`;
+                document.getElementById('generateBtn').disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
